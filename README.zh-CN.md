@@ -266,4 +266,10 @@ your-project/
 
 ---
 
+## 许可证
+
+MIT License。详情请参阅 [LICENSE](LICENSE)。
+
+---
+
 用 Claude Code 构建。在生产环境验证。为你的公司准备就绪。
