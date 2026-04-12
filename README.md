@@ -1,5 +1,7 @@
 # AI-CEO Framework
 
+**[English](README.md)** | [日本語](README.ja.md) | [中文](README.zh-CN.md)
+
 ## Run Your Entire Company with Claude Code
 
 **15 AI Agents + 5 Production Skills + Approval Pipeline. One-person company, fully automated.**
@@ -25,7 +27,7 @@ One CEO. Zero employees. Full C-suite powered by Claude Code.
 
 ## What's Inside
 
-### 16 AI Agents (`agents/`)
+### 15 AI Agents (`agents/`)
 
 Each agent has a defined persona, expertise, workflows, output templates, and quality checks.
 
@@ -256,27 +258,11 @@ A: Built-in error handling: retry up to 3 times with feedback, then escalate to 
 
 ---
 
-## Pricing
-
-**$99** (one-time purchase)
-
-Includes:
-- 15 agent definitions (production-tested)
-- 5 skill definitions
-- Orchestrator CLAUDE.md
-- Steering files (permissions, policies)
-- Setup script
-- Lifetime updates
-
-No subscriptions. No recurring fees. Your only ongoing cost is your Claude Code plan.
-
----
-
-## What You're Really Getting
+## What This Really Is
 
 This is not a prompt collection. It's a **production-grade operating system for running a company with AI**. Every agent, every workflow, every quality check was refined through 1+ year of daily use. The hypothesis validation skill alone has saved tens of thousands of dollars by killing bad ideas early.
 
-You're buying the distilled experience of running an entire company with Claude Code -- the failures, the fixes, and the frameworks that survived.
+This is the distilled experience of running an entire company with Claude Code -- the failures, the fixes, and the frameworks that survived.
 
 ---
 
