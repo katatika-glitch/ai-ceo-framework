@@ -258,27 +258,11 @@ A: Built-in error handling: retry up to 3 times with feedback, then escalate to 
 
 ---
 
-## Pricing
-
-**$99** (one-time purchase)
-
-Includes:
-- 15 agent definitions (production-tested)
-- 5 skill definitions
-- Orchestrator CLAUDE.md
-- Steering files (permissions, policies)
-- Setup script
-- Lifetime updates
-
-No subscriptions. No recurring fees. Your only ongoing cost is your Claude Code plan.
-
----
-
-## What You're Really Getting
+## What This Really Is
 
 This is not a prompt collection. It's a **production-grade operating system for running a company with AI**. Every agent, every workflow, every quality check was refined through 1+ year of daily use. The hypothesis validation skill alone has saved tens of thousands of dollars by killing bad ideas early.
 
-You're buying the distilled experience of running an entire company with Claude Code -- the failures, the fixes, and the frameworks that survived.
+This is the distilled experience of running an entire company with Claude Code -- the failures, the fixes, and the frameworks that survived.
 
 ---
 
