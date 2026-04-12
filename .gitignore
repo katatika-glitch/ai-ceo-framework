@@ -1,0 +1,20 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Company-specific data (never commit)
+.company/decisions/
+.company/departments/*/error-log.md
+.company/approval-queue.md
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
