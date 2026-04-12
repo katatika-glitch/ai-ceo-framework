@@ -266,4 +266,10 @@ This is the distilled experience of running an entire company with Claude Code -
 
 ---
 
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
 Built with Claude Code. Tested in production. Ready for yours.
