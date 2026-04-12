@@ -1,5 +1,7 @@
 # AI-CEO Framework
 
+**[English](README.md)** | [日本語](README.ja.md) | [中文](README.zh-CN.md)
+
 ## Run Your Entire Company with Claude Code
 
 **15 AI Agents + 5 Production Skills + Approval Pipeline. One-person company, fully automated.**
@@ -25,7 +27,7 @@ One CEO. Zero employees. Full C-suite powered by Claude Code.
 
 ## What's Inside
 
-### 16 AI Agents (`agents/`)
+### 15 AI Agents (`agents/`)
 
 Each agent has a defined persona, expertise, workflows, output templates, and quality checks.
 
