@@ -2,6 +2,10 @@
 
 [English](README.md) | [日本語](README.ja.md) | **[中文](README.zh-CN.md)**
 
+![License: MIT](https://img.shields.io/github/license/JOINCLASS/ai-ceo-framework)
+![GitHub stars](https://img.shields.io/github/stars/JOINCLASS/ai-ceo-framework?style=social)
+![GitHub last commit](https://img.shields.io/github/last-commit/JOINCLASS/ai-ceo-framework)
+
 ## 用 Claude Code 运营你的整个公司
 
 **15 个 AI 智能体 + 5 个生产级技能 + 审批流水线。一人公司，全面自动化。**
@@ -84,28 +88,38 @@
 
 ---
 
-## 运作原理
+## 架构
 
+```mermaid
+flowchart TD
+    CEO["CEO（你）"]
+    ORC["CLAUDE.md\n（编排器）"]
+    
+    CEO -->|自然语言| ORC
+    
+    ORC --> CTO["CTO Agent\n迭代, 代码审查"]
+    ORC --> CMO["CMO Agent\n内容, SEO, 广告"]
+    ORC --> CFO["CFO Agent\n损益, 发票"]
+    ORC --> CSO["CSO Agent\n销售漏斗"]
+    ORC --> LGL["Legal Agent\n合同, 合规"]
+    ORC --> PUB["Publisher Agent\n书籍, 多渠道"]
+    ORC --> MORE["+ 其他 9 个智能体..."]
+    
+    ORC --> HYP["假设验证"]
+    ORC --> APQ["审批\n流水线"]
+    
+    HYP -->|执行 / 放弃| ORC
+    APQ -->|CEO 批准| EXE["执行"]
+    APQ -->|CEO 驳回| REJ["驳回 + 反馈"]
+    
+    style CEO fill:#f9a825,stroke:#f57f17,color:#000
+    style ORC fill:#1565c0,stroke:#0d47a1,color:#fff
+    style HYP fill:#7b1fa2,stroke:#4a148c,color:#fff
+    style APQ fill:#c62828,stroke:#b71c1c,color:#fff
+    style EXE fill:#2e7d32,stroke:#1b5e20,color:#fff
 ```
-CEO（你）
-  |
-  v
-CLAUDE.md（编排器）
-  |
-  +-- "目前状况怎么样？" --> Morning Digest Agent --> 仪表盘
-  |
-  +-- "写一篇关于 X 的博客" --> CMO --> Content Engine --> 已发布文章
-  |
-  +-- "审查一下这份合同" --> Legal Agent --> 风险报告
-  |
-  +-- "跑一个开发迭代" --> CTO Agent --> 迭代执行 + 代码审查
-  |
-  +-- "生成月度报告" --> CFO Agent --> 损益报告
-  |
-  +-- "新产品想法：X" --> 假设验证 --> 执行/放弃 决策
-  |
-  +-- 任何对外操作 --> 草稿 --> 审批队列 --> CEO 批准 --> 执行
-```
+
+## 运作原理
 
 ### 审批流水线
 
@@ -258,11 +272,41 @@ your-project/
 
 ---
 
+## Before / After
+
+| | 没有 AI-CEO | 使用 AI-CEO |
+|---|---|---|
+| **设置** | 一个巨大的 CLAUDE.md 塞下所有内容 | 15 个专业智能体 + 精简编排器 |
+| **上下文使用** | 瞬间消耗 100% | 编排器仅占 10-15%，其余委派 |
+| **对外操作** | AI 随意发邮件、部署 | 审批流水线：草稿 -> 审核 -> 执行 |
+| **错误处理** | 错误被默默忽略 | 自动重试 3 次，然后上报 CEO |
+| **新举措** | 先做再说，验证靠后 | 假设验证关卡（6 个阶段） |
+| **质量** | 没有标准 | 每个智能体独立质量检查 + 评分阈值 |
+| **扩展** | 全部重写 | 添加一个 `.md` 文件，编排器自动发现 |
+
+---
+
 ## 这个框架的本质
 
 这不是一个提示词合集。这是一套**用 AI 运营公司的生产级操作系统**。每一个智能体、每一条工作流程、每一项质量检查，都经过了 1 年以上的日常使用打磨。单是假设验证技能就已经通过早期否决坏主意，节省了数万美元。
 
 这是用 Claude Code 运营整个公司的提炼经验 -- 踩过的坑、修过的 bug、以及那些经受住考验的框架。
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JOINCLASS/ai-ceo-framework&type=Date)](https://star-history.com/#JOINCLASS/ai-ceo-framework)
+
+---
+
+## 贡献
+
+欢迎贡献！无论是 Bug 报告、功能建议还是 Pull Request，所有参与都很有价值。
+
+- **Issues**：发现 Bug 或有想法？请 [提交 Issue](https://github.com/JOINCLASS/ai-ceo-framework/issues)。
+- **Pull Requests**：Fork 仓库，进行修改，提交 PR。请保持修改聚焦，并附上清晰的说明。
+- **Discussions**：问题或想法还不够成为 Issue？欢迎发起 [Discussion](https://github.com/JOINCLASS/ai-ceo-framework/discussions)。
 
 ---
 

@@ -2,6 +2,10 @@
 
 **[English](README.md)** | [日本語](README.ja.md) | [中文](README.zh-CN.md)
 
+![License: MIT](https://img.shields.io/github/license/JOINCLASS/ai-ceo-framework)
+![GitHub stars](https://img.shields.io/github/stars/JOINCLASS/ai-ceo-framework?style=social)
+![GitHub last commit](https://img.shields.io/github/last-commit/JOINCLASS/ai-ceo-framework)
+
 ## Run Your Entire Company with Claude Code
 
 **15 AI Agents + 5 Production Skills + Approval Pipeline. One-person company, fully automated.**
@@ -84,28 +88,38 @@ The brain of the system. A single CLAUDE.md that:
 
 ---
 
-## How It Works
+## Architecture
 
+```mermaid
+flowchart TD
+    CEO["CEO (You)"]
+    ORC["CLAUDE.md\n(Orchestrator)"]
+    
+    CEO -->|Natural language| ORC
+    
+    ORC --> CTO["CTO Agent\nSprints, Code Review"]
+    ORC --> CMO["CMO Agent\nContent, SEO, Ads"]
+    ORC --> CFO["CFO Agent\nP&L, Invoicing"]
+    ORC --> CSO["CSO Agent\nSales Pipeline"]
+    ORC --> LGL["Legal Agent\nContracts, Compliance"]
+    ORC --> PUB["Publisher Agent\nBooks, Multi-channel"]
+    ORC --> MORE["+ 9 more agents..."]
+    
+    ORC --> HYP["Hypothesis\nValidation"]
+    ORC --> APQ["Approval\nPipeline"]
+    
+    HYP -->|Go / No-Go| ORC
+    APQ -->|CEO approves| EXE["Execute"]
+    APQ -->|CEO rejects| REJ["Reject + Feedback"]
+    
+    style CEO fill:#f9a825,stroke:#f57f17,color:#000
+    style ORC fill:#1565c0,stroke:#0d47a1,color:#fff
+    style HYP fill:#7b1fa2,stroke:#4a148c,color:#fff
+    style APQ fill:#c62828,stroke:#b71c1c,color:#fff
+    style EXE fill:#2e7d32,stroke:#1b5e20,color:#fff
 ```
-CEO (you)
-  |
-  v
-CLAUDE.md (Orchestrator)
-  |
-  +-- "What's our status?" --> Morning Digest Agent --> Dashboard
-  |
-  +-- "Write a blog post about X" --> CMO --> Content Engine --> Published article
-  |
-  +-- "Review this contract" --> Legal Agent --> Risk report
-  |
-  +-- "Run a dev sprint" --> CTO Agent --> Sprint execution + code review
-  |
-  +-- "Generate monthly report" --> CFO Agent --> P&L report
-  |
-  +-- "New product idea: X" --> Hypothesis Validation --> Go/No-Go decision
-  |
-  +-- Any external action --> Draft --> Approval Queue --> CEO approves --> Execute
-```
+
+## How It Works
 
 ### The Approval Pipeline
 
@@ -258,11 +272,41 @@ A: Built-in error handling: retry up to 3 times with feedback, then escalate to 
 
 ---
 
+## Before / After
+
+| | Without AI-CEO | With AI-CEO |
+|---|---|---|
+| **Setup** | One giant CLAUDE.md with everything | 15 specialized agents + thin orchestrator |
+| **Context usage** | 100% consumed instantly | 10-15% orchestrator, delegates the rest |
+| **External actions** | AI sends emails, deploys freely | Approval pipeline: draft -> review -> execute |
+| **Error handling** | Errors silently ignored | Auto-retry 3x, then escalate to CEO |
+| **New initiatives** | Build first, validate later | Hypothesis validation gate (6 phases) |
+| **Quality** | No standards | Per-agent quality checks + scoring thresholds |
+| **Scaling** | Rewrite everything | Add a new `.md` file, orchestrator auto-discovers |
+
+---
+
 ## What This Really Is
 
 This is not a prompt collection. It's a **production-grade operating system for running a company with AI**. Every agent, every workflow, every quality check was refined through 1+ year of daily use. The hypothesis validation skill alone has saved tens of thousands of dollars by killing bad ideas early.
 
 This is the distilled experience of running an entire company with Claude Code -- the failures, the fixes, and the frameworks that survived.
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=JOINCLASS/ai-ceo-framework&type=Date)](https://star-history.com/#JOINCLASS/ai-ceo-framework)
+
+---
+
+## Contributing
+
+Contributions are welcome! Whether it's a bug report, feature request, or pull request -- all input is valued.
+
+- **Issues**: Found a bug or have an idea? [Open an issue](https://github.com/JOINCLASS/ai-ceo-framework/issues).
+- **Pull Requests**: Fork the repo, make your changes, and submit a PR. Please keep changes focused and include a clear description.
+- **Discussions**: Questions or ideas that aren't quite issues? Start a [discussion](https://github.com/JOINCLASS/ai-ceo-framework/discussions).
 
 ---
 
