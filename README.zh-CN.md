@@ -272,6 +272,18 @@ your-project/
 
 ---
 
+## 专业支持
+
+需要帮助为您的公司配置 AI-CEO Framework？JoinClass LLC 提供咨询服务：
+
+- **免费30分钟AI诊断** — 我们分析您的业务流程，找出AI自动化效果最大的前3个领域
+- **定制配置** — 根据您的具体业务需求配置框架
+- **持续支持** — 每月AI运营优化顾问
+
+[预约免费诊断 →](https://joinclass.co.jp/#cta)
+
+---
+
 ## Before / After
 
 | | 没有 AI-CEO | 使用 AI-CEO |
