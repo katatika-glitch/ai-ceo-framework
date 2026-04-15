@@ -272,6 +272,18 @@ A: Built-in error handling: retry up to 3 times with feedback, then escalate to 
 
 ---
 
+## Professional Support
+
+Need help setting up AI-CEO Framework for your company? JoinClass LLC offers consulting services:
+
+- **Free 30-min AI diagnosis** — We analyze your business operations and identify the top 3 areas where AI automation will have the biggest impact
+- **Custom setup** — We configure the framework for your specific business needs
+- **Ongoing support** — Monthly advisory for AI operations optimization
+
+[Book a free diagnosis →](https://joinclass.co.jp/#cta)
+
+---
+
 ## Before / After
 
 | | Without AI-CEO | With AI-CEO |
