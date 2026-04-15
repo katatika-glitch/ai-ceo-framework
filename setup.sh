@@ -12,21 +12,58 @@ echo "  Run Your Entire Company with Claude Code"
 echo "============================================"
 echo ""
 
+# Validate: must not run in the framework repo itself
+if [ -f "$(pwd)/setup.sh" ] && [ -d "$(pwd)/agents" ] && [ -d "$(pwd)/skills" ]; then
+  echo "ERROR: Do not run setup.sh inside the ai-ceo-framework repo itself."
+  echo "       Run it from your target project directory:"
+  echo ""
+  echo "       cd /path/to/your-project"
+  echo "       bash /path/to/ai-ceo-framework/setup.sh"
+  echo ""
+  exit 1
+fi
+
+# Helper to prompt with a default value
+prompt_with_default() {
+  local prompt_text="$1"
+  local default_value="$2"
+  local result
+  if [ -n "$default_value" ]; then
+    read -p "${prompt_text} [${default_value}]: " result
+    echo "${result:-$default_value}"
+  else
+    read -p "${prompt_text}: " result
+    echo "$result"
+  fi
+}
+
+# Helper to prompt and require non-empty input
+prompt_required() {
+  local prompt_text="$1"
+  local result=""
+  while [ -z "$result" ]; do
+    read -p "${prompt_text}: " result
+    if [ -z "$result" ]; then
+      echo "  (Required. Please enter a value.)" >&2
+    fi
+  done
+  echo "$result"
+}
+
 # Collect information
-read -p "Company name: " COMPANY_NAME
-read -p "CEO name: " CEO_NAME
-read -p "Monthly AI budget (USD, e.g., 200): " MONTHLY_AI_BUDGET
-read -p "Auto-approve limit per item (USD, e.g., 50): " AUTO_APPROVE_LIMIT
-read -p "Accounting software (e.g., QuickBooks, Xero, FreshBooks): " ACCOUNTING_SOFTWARE
-read -p "Marketing tool (e.g., HubSpot, Mailchimp, Buffer): " MARKETING_TOOL
-read -p "Analytics tool (e.g., Google Analytics, Plausible, Umami): " ANALYTICS_TOOL
-read -p "Blog content path (e.g., ./content/blog): " BLOG_CONTENT_PATH
-read -p "Book source path (e.g., ./content/books): " BOOK_SOURCE_PATH
-read -p "Publishing platform (e.g., Amazon KDP, Gumroad, Leanpub): " PUBLISHING_PLATFORM
-read -p "Target audience (e.g., developers, small business owners): " TARGET_AUDIENCE
-read -p "Number of departments (default: 11): " DEPARTMENT_COUNT
-DEPARTMENT_COUNT=${DEPARTMENT_COUNT:-11}
-read -p "Consulting target industries (comma-separated, e.g., education,logistics): " CONSULTING_INDUSTRIES
+COMPANY_NAME=$(prompt_required "Company name")
+CEO_NAME=$(prompt_required "CEO name")
+MONTHLY_AI_BUDGET=$(prompt_with_default "Monthly AI budget (USD)" "200")
+AUTO_APPROVE_LIMIT=$(prompt_with_default "Auto-approve limit per item (USD)" "50")
+ACCOUNTING_SOFTWARE=$(prompt_with_default "Accounting software" "QuickBooks")
+MARKETING_TOOL=$(prompt_with_default "Marketing tool" "HubSpot")
+ANALYTICS_TOOL=$(prompt_with_default "Analytics tool" "Google Analytics")
+BLOG_CONTENT_PATH=$(prompt_with_default "Blog content path" "./content/blog")
+BOOK_SOURCE_PATH=$(prompt_with_default "Book source path" "./content/books")
+PUBLISHING_PLATFORM=$(prompt_with_default "Publishing platform" "Amazon KDP")
+TARGET_AUDIENCE=$(prompt_with_default "Target audience" "developers")
+DEPARTMENT_COUNT=$(prompt_with_default "Number of departments" "11")
+CONSULTING_INDUSTRIES=$(prompt_with_default "Consulting target industries (comma-separated)" "education,logistics")
 
 CEO_APPROVAL_LIMIT=$AUTO_APPROVE_LIMIT
 
@@ -48,6 +85,7 @@ mkdir -p .company/departments/legal
 mkdir -p .company/departments/hr
 mkdir -p .company/departments/publishing
 mkdir -p .company/departments/consulting
+mkdir -p .company/departments/tax
 mkdir -p .company/decisions
 
 echo "  [OK] Directory structure created"
@@ -69,16 +107,22 @@ cp "$SCRIPT_DIR/steering/"*.md .company/steering/
 
 echo "  [OK] Framework files copied"
 
-# Replace placeholders in all files
+# Replace placeholders only in framework-generated files (not user's existing files)
 replace_placeholder() {
   local placeholder="$1"
   local value="$2"
-  # Use different sed syntax for macOS vs Linux
+  local sed_cmd
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    find . -name "*.md" -not -path "./.git/*" -exec sed -i '' "s|{{${placeholder}}}|${value}|g" {} +
+    sed_cmd=(sed -i '' "s|{{${placeholder}}}|${value}|g")
   else
-    find . -name "*.md" -not -path "./.git/*" -exec sed -i "s|{{${placeholder}}}|${value}|g" {} +
+    sed_cmd=(sed -i "s|{{${placeholder}}}|${value}|g")
   fi
+  # Replace in framework directories
+  for dir in .claude .company; do
+    [ -d "$dir" ] && find "$dir" -name "*.md" -exec "${sed_cmd[@]}" {} +
+  done
+  # Replace in CLAUDE.md at project root
+  [ -f "./CLAUDE.md" ] && "${sed_cmd[@]}" "./CLAUDE.md"
 }
 
 replace_placeholder "COMPANY_NAME" "$COMPANY_NAME"
