@@ -1,4 +1,5 @@
 import os
+import datetime
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import anthropic
@@ -13,11 +14,31 @@ def read_company_file(path):
     except:
         return ""
 
+def write_company_file(path, content):
+    try:
+        os.makedirs(os.path.dirname(f"/app/.company/{path}"), exist_ok=True)
+        with open(f"/app/.company/{path}", "w", encoding="utf-8") as f:
+            f.write(content)
+    except:
+        pass
+
 def get_company_context():
     vision = read_company_file("VISION.md")
     state = read_company_file("STATE.md")
     permissions = read_company_file("steering/permissions.md")
     return f"# 会社情報\n\n{vision}\n\n# 現在の状態\n\n{state}\n\n# 権限ルール\n\n{permissions}"
+
+def add_to_approval_queue(agent, description, draft):
+    queue = read_company_file("approval-queue.md")
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    item_id = f"AQ-{timestamp}"
+    new_item = f"\n### {item_id}\n- エージェント: {agent}\n- 内容: {description}\n- ドラフト:\n{draft}\n"
+    queue = queue.replace("## 承認待ち\nなし", f"## 承認待ち\n{new_item}")
+    queue = queue.replace("## 承認待ち\n", f"## 承認待ち\n{new_item}")
+    write_company_file("approval-queue.md", queue)
+    return item_id
+
+APPROVAL_REQUIRED = ["sns投稿", "メール", "デプロイ", "請求書", "契約", "投稿"]
 
 AGENTS = {
     "pm": "あなたはKATAkitのPMエージェントです。要件定義・仕様書作成・プロジェクト管理を担当します。",
@@ -34,7 +55,7 @@ AGENTS = {
     "consulting": "あなたはKATAkitのConsultingエージェントです。AI自動化コンサル・診断・提案書作成を担当します。",
     "bizdev": "あなたはKATAkitのBizDevエージェントです。パートナーシップ・新規事業開発・アップセルを担当します。",
     "tax": "あなたはKATAkitのTaxエージェントです。仕訳・確定申告・節税・税務カレンダー管理を担当します。",
-    "morning": "あなたはKATAkitのMorning Digestエージェントです。毎朝全部門の状態を集約してAkitoに報告します。",    
+    "morning": "あなたはKATAkitのMorning Digestエージェントです。毎朝全部門の状態を集約してAkitoに報告します。",
     "orchestrator": """あなたはKATAkitのオーケストレーターです。CEOのAkitoからメッセージを受け取り、適切なエージェントに振り分けます。
 
 以下のルールで振り分けてください：
@@ -58,6 +79,12 @@ AGENTS = {
 AGENT: [pm/cto/cmo/cfo/cso/legal/cs/hr/publisher/content/growth/consulting/bizdev/tax/morning]
 REASON: [振り分けた理由を一言で]"""
 }
+
+def requires_approval(message):
+    for keyword in APPROVAL_REQUIRED:
+        if keyword in message:
+            return True
+    return False
 
 def route_to_agent(message):
     response = client.messages.create(
@@ -84,20 +111,31 @@ def call_agent(agent_name, message):
     )
     return response.content[0].text
 
+def handle_message(message, say):
+    if message.startswith("承認:"):
+        say("承認しました。実行します。")
+        return
+    if message.startswith("却下:"):
+        say("却下しました。修正します。")
+        return
+
+    agent = route_to_agent(message)
+    reply = call_agent(agent, message)
+
+    if requires_approval(message):
+        item_id = add_to_approval_queue(agent, message, reply)
+        say(f"[{agent.upper()}エージェント] 承認待ち（{item_id}）\n\n{reply}\n\n---\n✅ 実行する場合は「承認: {item_id}」\n❌ 却下する場合は「却下: {item_id}」")
+    else:
+        say(f"[{agent.upper()}エージェント]\n\n{reply}")
+
 @app.event("app_mention")
 def handle_mention(event, say):
-    user_message = event["text"]
-    agent = route_to_agent(user_message)
-    reply = call_agent(agent, user_message)
-    say(f"[{agent.upper()}エージェント]\n\n{reply}")
+    handle_message(event["text"], say)
 
 @app.event("message")
 def handle_dm(event, say):
     if event.get("channel_type") == "im":
-        user_message = event["text"]
-        agent = route_to_agent(user_message)
-        reply = call_agent(agent, user_message)
-        say(f"[{agent.upper()}エージェント]\n\n{reply}")
+        handle_message(event["text"], say)
 
 if __name__ == "__main__":
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
