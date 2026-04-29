@@ -3,9 +3,11 @@ import datetime
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import anthropic
+from supabase import create_client
 
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 
 def read_company_file(path):
     try:
@@ -14,19 +16,34 @@ def read_company_file(path):
     except:
         return ""
 
-def write_company_file(path, content):
-    try:
-        os.makedirs(os.path.dirname(f"/app/.company/{path}"), exist_ok=True)
-        with open(f"/app/.company/{path}", "w", encoding="utf-8") as f:
-            f.write(content)
-    except:
-        pass
-
 def get_company_context():
     vision = read_company_file("VISION.md")
     state = read_company_file("STATE.md")
     permissions = read_company_file("steering/permissions.md")
     return f"# 会社情報\n\n{vision}\n\n# 現在の状態\n\n{state}\n\n# 権限ルール\n\n{permissions}"
+
+def save_message(channel_id, role, content):
+    try:
+        supabase.table("conversations").insert({
+            "channel_id": channel_id,
+            "role": role,
+            "content": content,
+            "created_at": datetime.datetime.utcnow().isoformat()
+        }).execute()
+    except Exception as e:
+        print(f"保存エラー: {e}")
+
+def get_history(channel_id, limit=10):
+    try:
+        result = supabase.table("conversations")\
+            .select("role, content")\
+            .eq("channel_id", channel_id)\
+            .order("created_at", desc=False)\
+            .limit(limit)\
+            .execute()
+        return [{"role": r["role"], "content": r["content"]} for r in result.data]
+    except:
+        return []
 
 def add_to_approval_queue(agent, description, draft):
     queue = read_company_file("approval-queue.md")
@@ -35,7 +52,6 @@ def add_to_approval_queue(agent, description, draft):
     new_item = f"\n### {item_id}\n- エージェント: {agent}\n- 内容: {description}\n- ドラフト:\n{draft}\n"
     queue = queue.replace("## 承認待ち\nなし", f"## 承認待ち\n{new_item}")
     queue = queue.replace("## 承認待ち\n", f"## 承認待ち\n{new_item}")
-    write_company_file("approval-queue.md", queue)
     return item_id
 
 APPROVAL_REQUIRED = ["sns投稿", "メール", "デプロイ", "請求書", "契約", "投稿"]
@@ -100,47 +116,45 @@ def route_to_agent(message):
             agent = line.replace("AGENT:", "").strip().lower()
     return agent
 
-def call_agent(agent_name, message):
+def call_agent(agent_name, message, history):
     company_context = get_company_context()
     system = f"{AGENTS.get(agent_name, AGENTS['pm'])}\n\n{company_context}"
+    messages = history + [{"role": "user", "content": message}]
     response = client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=1000,
-        messages=[{"role": "user", "content": message}],
+        messages=messages,
         system=system
     )
     return response.content[0].text
 
-def run_pipeline(task, say):
+def run_pipeline(task, channel_id, say):
     say("パイプラインを開始します。PMエージェントが要件定義を作成中...")
-    
-    # PMが要件定義を作成
-    pm_reply = call_agent("pm", f"以下のタスクの要件定義書を作成してください。\n\n{task}")
+    pm_reply = call_agent("pm", f"以下のタスクの要件定義書を作成してください。\n\n{task}", [])
+    save_message(channel_id, "assistant", f"[PM] {pm_reply}")
     say(f"[PMエージェント] 要件定義書を作成しました。\n\n{pm_reply}")
-    
-    # CTOが実装計画を作成
+
     say("CTOエージェントが実装計画を作成中...")
-    cto_reply = call_agent("cto", f"以下の要件定義書をもとに実装計画を作成してください。\n\n{pm_reply}")
+    cto_reply = call_agent("cto", f"以下の要件定義書をもとに実装計画を作成してください。\n\n{pm_reply}", [])
+    save_message(channel_id, "assistant", f"[CTO] {cto_reply}")
     say(f"[CTOエージェント] 実装計画を作成しました。\n\n{cto_reply}")
-    
-    # 承認を求める
     say("---\n✅ 実装を開始する場合は「承認: 実装開始」\n❌ 修正する場合は「却下: 修正内容」")
 
-def handle_message(message, say):
-    
+def handle_message(message, channel_id, say):
+    if message.startswith("承認:") or message.startswith("却下:"):
+        say("承認しました。次のステップに進みます。" if message.startswith("承認:") else "却下しました。修正します。")
+        return
+
+    save_message(channel_id, "user", message)
+    history = get_history(channel_id)
+
     if "作って" in message or "開発して" in message or "作成して" in message:
-        run_pipeline(message, say)
-        return
-    
-    if message.startswith("承認:"):
-        say("承認しました。実行します。")
-        return
-    if message.startswith("却下:"):
-        say("却下しました。修正します。")
+        run_pipeline(message, channel_id, say)
         return
 
     agent = route_to_agent(message)
-    reply = call_agent(agent, message)
+    reply = call_agent(agent, message, history)
+    save_message(channel_id, "assistant", reply)
 
     if requires_approval(message):
         item_id = add_to_approval_queue(agent, message, reply)
@@ -150,12 +164,12 @@ def handle_message(message, say):
 
 @app.event("app_mention")
 def handle_mention(event, say):
-    handle_message(event["text"], say)
+    handle_message(event["text"], event["channel"], say)
 
 @app.event("message")
 def handle_dm(event, say):
     if event.get("channel_type") == "im":
-        handle_message(event["text"], say)
+        handle_message(event["text"], event["channel"], say)
 
 if __name__ == "__main__":
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
