@@ -111,7 +111,27 @@ def call_agent(agent_name, message):
     )
     return response.content[0].text
 
+def run_pipeline(task, say):
+    say("パイプラインを開始します。PMエージェントが要件定義を作成中...")
+    
+    # PMが要件定義を作成
+    pm_reply = call_agent("pm", f"以下のタスクの要件定義書を作成してください。\n\n{task}")
+    say(f"[PMエージェント] 要件定義書を作成しました。\n\n{pm_reply}")
+    
+    # CTOが実装計画を作成
+    say("CTOエージェントが実装計画を作成中...")
+    cto_reply = call_agent("cto", f"以下の要件定義書をもとに実装計画を作成してください。\n\n{pm_reply}")
+    say(f"[CTOエージェント] 実装計画を作成しました。\n\n{cto_reply}")
+    
+    # 承認を求める
+    say("---\n✅ 実装を開始する場合は「承認: 実装開始」\n❌ 修正する場合は「却下: 修正内容」")
+
 def handle_message(message, say):
+    
+    if "作って" in message or "開発して" in message or "作成して" in message:
+        run_pipeline(message, say)
+        return
+    
     if message.startswith("承認:"):
         say("承認しました。実行します。")
         return
