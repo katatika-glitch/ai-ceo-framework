@@ -25,6 +25,7 @@ def get_company_context():
 def save_message(channel_id, role, content):
     try:
         supabase.table("conversations").insert({
+            "id": str(datetime.datetime.utcnow().timestamp()),
             "channel_id": channel_id,
             "role": role,
             "content": content,
@@ -32,6 +33,7 @@ def save_message(channel_id, role, content):
         }).execute()
     except Exception as e:
         print(f"保存エラー: {e}")
+
 
 def get_history(channel_id, limit=10):
     try:
