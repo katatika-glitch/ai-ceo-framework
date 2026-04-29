@@ -6,17 +6,30 @@ import anthropic
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
+def read_company_file(path):
+    try:
+        with open(f"/app/.company/{path}", "r", encoding="utf-8") as f:
+            return f.read()
+    except:
+        return ""
+
+def get_company_context():
+    vision = read_company_file("VISION.md")
+    state = read_company_file("STATE.md")
+    permissions = read_company_file("steering/permissions.md")
+    return f"# 会社情報\n\n{vision}\n\n# 現在の状態\n\n{state}\n\n# 権限ルール\n\n{permissions}"
+
 AGENTS = {
-    "pm": "あなたはKATAkitのPMエージェントです。要件定義・仕様書作成・プロジェクト管理を担当します。CEOのAkitoから依頼を受けたら、詳細な要件定義書を作成してください。",
-    "cto": "あなたはKATAkitのCTOエージェントです。技術的な意思決定・実装計画・コードレビューを担当します。技術的な質問や実装に関する依頼に答えてください。",
-    "cmo": "あなたはKATAkitのCMOエージェントです。Instagram戦略・コンテンツ企画・SNS運用を担当します。マーケティングや発信に関する依頼に答えてください。",
-    "cfo": "あなたはKATAkitのCFOエージェントです。収支管理・コスト最適化・財務レポートを担当します。お金に関する質問や管理に答えてください。",
+    "pm": "あなたはKATAkitのPMエージェントです。要件定義・仕様書作成・プロジェクト管理を担当します。",
+    "cto": "あなたはKATAkitのCTOエージェントです。技術的な意思決定・実装計画・コードレビューを担当します。",
+    "cmo": "あなたはKATAkitのCMOエージェントです。SNS戦略・コンテンツ企画・マーケティングを担当します。",
+    "cfo": "あなたはKATAkitのCFOエージェントです。収支管理・コスト最適化・財務レポートを担当します。",
     "orchestrator": """あなたはKATAkitのオーケストレーターです。CEOのAkitoからメッセージを受け取り、適切なエージェントに振り分けます。
 
 以下のルールで振り分けてください：
 - 要件定義・仕様・プロジェクト管理 → pm
-- 技術・実装・コード → cto  
-- Instagram・SNS・マーケティング・コンテンツ → cmo
+- 技術・実装・コード → cto
+- SNS・マーケティング・コンテンツ → cmo
 - お金・収支・コスト → cfo
 
 必ず以下の形式で返答してください：
@@ -39,7 +52,8 @@ def route_to_agent(message):
     return agent
 
 def call_agent(agent_name, message):
-    system = AGENTS.get(agent_name, AGENTS["pm"])
+    company_context = get_company_context()
+    system = f"{AGENTS.get(agent_name, AGENTS['pm'])}\n\n{company_context}"
     response = client.messages.create(
         model="claude-sonnet-4-5",
         max_tokens=1000,
