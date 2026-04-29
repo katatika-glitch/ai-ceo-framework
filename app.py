@@ -11,7 +11,6 @@ def handle_mention(event, say):
     user_message = event["text"]
     response = client.messages.create(
         model="claude-sonnet-4-5",
-",
         max_tokens=1000,
         system="あなたはKATAkitのAIエージェントです。CEOのAkitoをサポートします。",
         messages=[{"role": "user", "content": user_message}]
@@ -24,7 +23,6 @@ def handle_dm(event, say):
         user_message = event["text"]
         response = client.messages.create(
             model="claude-sonnet-4-5",
-",
             max_tokens=1000,
             system="あなたはKATAkitのAIエージェントです。CEOのAkitoをサポートします。",
             messages=[{"role": "user", "content": user_message}]
