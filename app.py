@@ -10,7 +10,7 @@ client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 def handle_mention(event, say):
     user_message = event["text"]
     response = client.messages.create(
-        model="model="claude-sonnet-4-5",
+        model="claude-sonnet-4-5",
 ",
         max_tokens=1000,
         system="あなたはKATAkitのAIエージェントです。CEOのAkitoをサポートします。",
@@ -23,7 +23,7 @@ def handle_dm(event, say):
     if event.get("channel_type") == "im":
         user_message = event["text"]
         response = client.messages.create(
-            model="model="claude-sonnet-4-5",
+            model="claude-sonnet-4-5",
 ",
             max_tokens=1000,
             system="あなたはKATAkitのAIエージェントです。CEOのAkitoをサポートします。",
