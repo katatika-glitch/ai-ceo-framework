@@ -199,5 +199,7 @@ def run_scheduler():
 
 
 if __name__ == "__main__":
+    scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+    scheduler_thread.start()
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
