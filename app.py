@@ -25,7 +25,6 @@ def get_company_context():
 def save_message(channel_id, role, content):
     try:
         supabase.table("conversations").insert({
-            "id": str(datetime.datetime.utcnow().timestamp()),
             "channel_id": channel_id,
             "role": role,
             "content": content,
