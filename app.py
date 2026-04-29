@@ -172,6 +172,32 @@ def handle_dm(event, say):
     if event.get("channel_type") == "im":
         handle_message(event["text"], event["channel"], say)
 
+import threading
+import schedule
+import time
+
+def send_morning_digest():
+    channel = "#morning-digest"
+    channels_info = app.client.conversations_list()
+    channel_id = None
+    for ch in channels_info["channels"]:
+        if ch["name"] == "morning-digest":
+            channel_id = ch["id"]
+            break
+    
+    if not channel_id:
+        return
+    
+    digest = call_agent("morning", "今日の朝のダイジェストを作成してください。各事業の状況、優先タスク、注意事項をまとめてください。", [])
+    app.client.chat_postMessage(channel=channel_id, text=f"🌅 KATAkit Morning Digest\n\n{digest}")
+
+def run_scheduler():
+    schedule.every().day.at("08:00").do(send_morning_digest)
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+
+
 if __name__ == "__main__":
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
