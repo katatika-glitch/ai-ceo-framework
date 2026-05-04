@@ -11,7 +11,7 @@ export async function GET() {
 
   const { data: projects, count } = await supabaseAdmin
     .from('projects')
-    .select('id, title, description, netlify_url, status, created_at', { count: 'exact' })
+    .select('id, title, description, netlify_url, html_content, status, created_at', { count: 'exact' })
     .eq('user_id', session.user.id)
     .order('created_at', { ascending: false })
 

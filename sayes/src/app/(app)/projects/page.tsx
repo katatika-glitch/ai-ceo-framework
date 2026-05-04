@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import UpgradeButton from '@/components/UpgradeButton'
 
 type Project = {
   id: string
   title: string
   description: string
   netlify_url: string | null
+  html_content: string | null
   status: string
   created_at: string
 }
@@ -39,8 +41,8 @@ export default function ProjectsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-12">
-      <div className="w-full max-w-sm mx-auto space-y-8">
+    <main className="min-h-screen bg-zinc-950 px-6 py-8">
+      <div className="w-full max-w-sm mx-auto space-y-6">
 
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-white">マイプロジェクト</h1>
@@ -53,7 +55,7 @@ export default function ProjectsPage() {
 
         {projects.length === 0 ? (
           <div className="text-center py-16 space-y-4">
-            <p className="text-zinc-500">まだプロジェクトがありません</p>
+            <p className="text-zinc-500 text-sm">まだプロジェクトがありません</p>
             <button
               onClick={() => router.push('/session')}
               className="px-6 py-3 rounded-2xl bg-white text-zinc-900 text-sm font-medium active:scale-95 transition-transform"
@@ -79,9 +81,7 @@ export default function ProjectsPage() {
         )}
 
         {remaining === 0 && (
-          <button className="w-full py-4 rounded-2xl bg-white text-zinc-900 text-base font-semibold active:scale-95 transition-transform">
-            有料プランへアップグレード
-          </button>
+          <UpgradeButton className="w-full py-4 rounded-2xl bg-white text-zinc-900 text-base font-semibold active:scale-95 transition-transform" />
         )}
 
       </div>
@@ -90,28 +90,62 @@ export default function ProjectsPage() {
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const router = useRouter()
+  const [downloading, setDownloading] = useState(false)
   const date = new Date(project.created_at).toLocaleDateString('ja-JP', {
     month: 'short', day: 'numeric'
   })
 
+  function downloadHtml() {
+    if (!project.html_content) return
+    setDownloading(true)
+    const blob = new Blob([project.html_content], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${project.title}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+    setTimeout(() => setDownloading(false), 1000)
+  }
+
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-3">
+    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-4">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-white font-semibold">{project.title}</p>
           <p className="text-zinc-400 text-sm mt-0.5">{project.description}</p>
         </div>
-        <span className="text-zinc-600 text-xs shrink-0">{date}</span>
+        <span className="text-zinc-600 text-xs shrink-0 pt-0.5">{date}</span>
       </div>
-      {project.netlify_url && (
-        <a
-          href={project.netlify_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm text-center active:scale-95 transition-transform"
+
+      <div className="grid grid-cols-2 gap-2">
+        {project.netlify_url && (
+          <a
+            href={project.netlify_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm text-center active:scale-95 transition-transform"
+          >
+            開く →
+          </a>
+        )}
+        <button
+          onClick={() => router.push(`/guide?project=${project.id}`)}
+          className="py-3 rounded-xl border border-zinc-700 text-zinc-300 text-sm active:scale-95 transition-transform"
         >
-          開く →
-        </a>
+          実装ガイド
+        </button>
+      </div>
+
+      {project.html_content && (
+        <button
+          onClick={downloadHtml}
+          disabled={downloading}
+          className="w-full py-3 rounded-xl bg-zinc-800 text-zinc-400 text-sm active:scale-95 transition-all disabled:opacity-50"
+        >
+          {downloading ? 'ダウンロード中…' : 'コードをダウンロード (.html)'}
+        </button>
       )}
     </div>
   )

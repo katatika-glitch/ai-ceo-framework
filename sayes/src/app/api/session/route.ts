@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic()
+function getAnthropic() { return new Anthropic() }
 
 // POST /api/session
 // step: 'questions' | 'propose' | 'refine' | 'finalize'
@@ -29,7 +29,7 @@ async function handleQuestions(userId: string, _payload: unknown) {
     .eq('id', userId)
     .single()
 
-  const msg = await anthropic.messages.create({
+  const msg = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
     system: 'あなたはSAYESのAIアシスタントです。ユーザーのプロフィールをもとに、今日のセッションのコンテキストを把握するための YES/NO質問を2〜3問生成してください。JSONのみ返してください。',
@@ -55,7 +55,7 @@ async function handlePropose(userId: string, payload: { profile: Record<string, 
 
   const pastTitles = pastProjects?.map(p => p.title).join(', ') || 'なし'
 
-  const msg = await anthropic.messages.create({
+  const msg = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
     system: 'あなたはSAYESのAIアシスタントです。ユーザーのプロフィールとセッションコンテキストをもとに、副業・個人事業に役立つWebプロダクトを1つ提案してください。JSONのみ返してください。',
@@ -77,7 +77,7 @@ async function handleRefine(payload: { proposal: Record<string, string>; yesNoLo
     return NextResponse.json({ done: true, proposal })
   }
 
-  const msg = await anthropic.messages.create({
+  const msg = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
     system: 'あなたはSAYESのAIアシスタントです。ユーザーのYES/NOの回答をもとに、プロダクト提案を精緻化してください。JSONのみ返してください。',

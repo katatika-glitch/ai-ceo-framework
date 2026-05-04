@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { supabaseAdmin } from '@/lib/supabase'
 import Anthropic from '@anthropic-ai/sdk'
 
-const anthropic = new Anthropic()
+function getAnthropic() { return new Anthropic() }
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -12,21 +12,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // 無料プラン上限チェック (T-10)
-  const { count } = await supabaseAdmin
-    .from('projects')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', session.user.id)
-    .eq('status', 'deployed')
+  // プランチェック：proは無制限、freeは2件まで
+  const { data: user } = await supabaseAdmin
+    .from('users')
+    .select('plan')
+    .eq('id', session.user.id)
+    .single()
 
-  if ((count ?? 0) >= 2) {
-    return NextResponse.json({ error: 'limit_reached' }, { status: 403 })
+  if (user?.plan !== 'pro') {
+    const { count } = await supabaseAdmin
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+      .eq('status', 'deployed')
+
+    if ((count ?? 0) >= 2) {
+      return NextResponse.json({ error: 'limit_reached' }, { status: 403 })
+    }
   }
 
   const { proposal, yesNoLog } = await req.json()
 
   // T-08: 1ファイルHTML生成
-  const htmlMsg = await anthropic.messages.create({
+  const htmlMsg = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 8192,
     system: `あなたはWebフロントエンドエンジニアです。以下の仕様に従って、インタラクティブな1ファイルHTMLを生成してください。
