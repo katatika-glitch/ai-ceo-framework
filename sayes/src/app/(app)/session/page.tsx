@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Stage =
@@ -12,12 +12,23 @@ type Stage =
   | 'generating'
   | 'done'
   | 'limit-reached'
+  | 'error'
 
 type Proposal = {
   title: string
   description: string
   pitch: string
   features?: string[]
+}
+
+async function callSession(step: string, payload: unknown) {
+  const res = await fetch('/api/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ step, payload }),
+  })
+  if (!res.ok) throw new Error(`session error: ${res.status}`)
+  return res.json()
 }
 
 export default function SessionPage() {
@@ -32,24 +43,48 @@ export default function SessionPage() {
   const [yesNoLog, setYesNoLog] = useState<Array<{ question: string; answer: boolean }>>([])
   const [roundsLeft, setRoundsLeft] = useState(4)
   const [netlifyUrl, setNetlifyUrl] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     async function init() {
-      const [profileRes, questionsRes] = await Promise.all([
-        fetch('/api/profile'),
-        fetch('/api/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ step: 'questions', payload: {} }),
-        }),
-      ])
-      const { profile: p } = await profileRes.json()
-      const { questions } = await questionsRes.json()
-      setProfile(p)
-      setContextQuestions(questions ?? [])
-      setStage('context-questions')
+      try {
+        const [profileRes, questionsData] = await Promise.all([
+          fetch('/api/profile').then(r => r.json()),
+          callSession('questions', {}),
+        ])
+        setProfile(profileRes.profile)
+        const questions: string[] = questionsData.questions ?? []
+        if (questions.length === 0) {
+          // 質問が取得できなかった場合は直接提案フェーズへ
+          setContextQuestions([])
+          await startPropose(profileRes.profile, {})
+        } else {
+          setContextQuestions(questions)
+          setStage('context-questions')
+        }
+      } catch {
+        setErrorMsg('読み込みに失敗しました。再度お試しください。')
+        setStage('error')
+      }
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const startPropose = useCallback(async (
+    p: Record<string, string>,
+    ctx: Record<string, boolean>
+  ) => {
+    setStage('proposing')
+    try {
+      const data = await callSession('propose', { profile: p, context: ctx })
+      if (!data.title) throw new Error('empty proposal')
+      setProposal(data)
+      setStage('proposal')
+    } catch {
+      setErrorMsg('提案の取得に失敗しました。')
+      setStage('error')
+    }
   }, [])
 
   async function handleContextAnswer(answer: boolean) {
@@ -61,87 +96,73 @@ export default function SessionPage() {
       setContextIndex(contextIndex + 1)
       return
     }
-
-    // 全コンテキスト質問完了 → AI提案
-    setStage('proposing')
-    const res = await fetch('/api/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 'propose', payload: { profile, context: updated } }),
-    })
-    const data = await res.json()
-    setProposal(data)
-    setStage('proposal')
+    await startPropose(profile!, updated)
   }
 
   async function handleProposalAnswer(accept: boolean) {
     if (!accept) {
-      // 提案を拒否 → 再提案
-      setStage('proposing')
-      const res = await fetch('/api/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ step: 'propose', payload: { profile, context: contextAnswers } }),
-      })
-      const data = await res.json()
-      setProposal(data)
-      setStage('proposal')
+      await startPropose(profile!, contextAnswers)
       return
     }
 
-    // 承認 → 精緻化フェーズへ
     setStage('refining')
-    const res = await fetch('/api/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 'refine', payload: { proposal, yesNoLog: [], roundsLeft } }),
-    })
-    const data = await res.json()
-    setRefineQuestion(data.nextQuestion)
-    if (data.proposal) setProposal(data.proposal)
+    try {
+      const data = await callSession('refine', { proposal, yesNoLog: [], roundsLeft })
+      setRefineQuestion(data.nextQuestion ?? '通知機能は必要ですか？')
+      if (data.proposal) setProposal(data.proposal)
+    } catch {
+      setErrorMsg('詳細設定の取得に失敗しました。')
+      setStage('error')
+    }
   }
 
   async function handleRefineAnswer(answer: boolean) {
     const newLog = [...yesNoLog, { question: refineQuestion, answer }]
     setYesNoLog(newLog)
     const newRoundsLeft = roundsLeft - 1
+    setRoundsLeft(newRoundsLeft)
 
     if (newRoundsLeft <= 0) {
       await generate(newLog)
       return
     }
 
-    setRoundsLeft(newRoundsLeft)
-    const res = await fetch('/api/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: 'refine', payload: { proposal, yesNoLog: newLog, roundsLeft: newRoundsLeft } }),
-    })
-    const data = await res.json()
-    if (data.done) {
+    try {
+      const data = await callSession('refine', { proposal, yesNoLog: newLog, roundsLeft: newRoundsLeft })
+      if (data.done) {
+        await generate(newLog)
+      } else {
+        setRefineQuestion(data.nextQuestion ?? 'ログイン機能は必要ですか？')
+        if (data.proposal) setProposal(data.proposal)
+      }
+    } catch {
+      // 精緻化失敗時はそのまま生成へ
       await generate(newLog)
-    } else {
-      setRefineQuestion(data.nextQuestion)
-      if (data.proposal) setProposal(data.proposal)
     }
   }
 
   async function generate(log: Array<{ question: string; answer: boolean }>) {
     setStage('generating')
-    const res = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposal, yesNoLog: log }),
-    })
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposal, yesNoLog: log }),
+      })
 
-    if (res.status === 403) {
-      setStage('limit-reached')
-      return
+      if (res.status === 403) {
+        setStage('limit-reached')
+        return
+      }
+      if (!res.ok) throw new Error('generate failed')
+
+      const data = await res.json()
+      setNetlifyUrl(data.netlifyUrl ?? '')
+      setStage('done')
+    } catch {
+      setErrorMsg('生成に失敗しました。もう一度お試しください。')
+      setStage('error')
     }
-
-    const data = await res.json()
-    setNetlifyUrl(data.netlifyUrl ?? '')
-    setStage('done')
   }
 
   return (
@@ -186,13 +207,32 @@ export default function SessionPage() {
           <DoneView
             proposal={proposal!}
             netlifyUrl={netlifyUrl}
-            onNew={() => router.push('/session')}
+            onNew={() => {
+              setStage('loading')
+              setContextIndex(0)
+              setContextAnswers({})
+              setYesNoLog([])
+              setRoundsLeft(4)
+              setProposal(null)
+              router.refresh()
+            }}
             onProjects={() => router.push('/projects')}
           />
         )}
 
         {stage === 'limit-reached' && (
           <LimitView onProjects={() => router.push('/projects')} />
+        )}
+
+        {stage === 'error' && (
+          <ErrorView
+            message={errorMsg}
+            onRetry={() => {
+              setStage('loading')
+              setErrorMsg('')
+              router.refresh()
+            }}
+          />
         )}
 
       </div>
@@ -209,10 +249,12 @@ function LoadingView({ message = '読み込み中…' }: { message?: string }) {
   )
 }
 
-function YesNoView({ label, badge, onYes, onNo }: { label: string; badge: string; onYes: () => void; onNo: () => void }) {
+function YesNoView({ label, badge, onYes, onNo }: {
+  label: string; badge: string; onYes: () => void; onNo: () => void
+}) {
   return (
     <div className="space-y-10">
-      <div className="space-y-2">
+      <div className="space-y-3">
         <span className="text-xs text-zinc-500">{badge}</span>
         <h2 className="text-2xl font-bold text-white leading-snug">{label}</h2>
       </div>
@@ -234,13 +276,15 @@ function YesNoView({ label, badge, onYes, onNo }: { label: string; badge: string
   )
 }
 
-function ProposalView({ proposal, onYes, onNo }: { proposal: Proposal; onYes: () => void; onNo: () => void }) {
+function ProposalView({ proposal, onYes, onNo }: {
+  proposal: Proposal; onYes: () => void; onNo: () => void
+}) {
   return (
     <div className="space-y-8">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <p className="text-zinc-400 text-sm">AIからの提案</p>
         <h2 className="text-2xl font-bold text-white">{proposal.title}</h2>
-        <p className="text-zinc-300 text-base">{proposal.description}</p>
+        <p className="text-zinc-300 text-base leading-relaxed">{proposal.description}</p>
       </div>
       <div className="bg-zinc-900 rounded-2xl p-5 border border-zinc-800">
         <p className="text-zinc-400 text-sm leading-relaxed">{proposal.pitch}</p>
@@ -249,13 +293,13 @@ function ProposalView({ proposal, onYes, onNo }: { proposal: Proposal; onYes: ()
       <div className="flex gap-4">
         <button
           onClick={onNo}
-          className="flex-1 py-5 rounded-2xl border border-zinc-700 text-zinc-300 text-lg font-medium active:scale-95 transition-transform"
+          className="flex-1 py-5 rounded-2xl border border-zinc-700 text-zinc-300 text-base font-medium active:scale-95 transition-transform"
         >
           別の提案
         </button>
         <button
           onClick={onYes}
-          className="flex-1 py-5 rounded-2xl bg-white text-zinc-900 text-lg font-medium active:scale-95 transition-transform"
+          className="flex-1 py-5 rounded-2xl bg-white text-zinc-900 text-base font-medium active:scale-95 transition-transform"
         >
           YES
         </button>
@@ -270,7 +314,7 @@ function RefineView({ proposal, question, roundsLeft, onYes, onNo, onGenerate }:
 }) {
   return (
     <div className="space-y-8">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <p className="text-zinc-500 text-xs">作るもの</p>
         <p className="text-white font-semibold">{proposal.title}</p>
         {proposal.features && (
@@ -292,7 +336,7 @@ function RefineView({ proposal, question, roundsLeft, onYes, onNo, onGenerate }:
       />
       <button
         onClick={onGenerate}
-        className="w-full py-4 rounded-2xl bg-zinc-800 text-zinc-300 text-base active:scale-95 transition-transform"
+        className="w-full py-4 rounded-2xl bg-zinc-800 text-zinc-400 text-sm active:scale-95 transition-transform"
       >
         このまま生成する
       </button>
@@ -306,10 +350,11 @@ function DoneView({ proposal, netlifyUrl, onNew, onProjects }: {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="text-zinc-400 text-sm">完成しました</p>
+        <p className="text-zinc-400 text-sm">完成しました 🎉</p>
         <h2 className="text-2xl font-bold text-white">{proposal.title}</h2>
+        <p className="text-zinc-400 text-sm">{proposal.description}</p>
       </div>
-      {netlifyUrl && (
+      {netlifyUrl ? (
         <a
           href={netlifyUrl}
           target="_blank"
@@ -318,6 +363,10 @@ function DoneView({ proposal, netlifyUrl, onNew, onProjects }: {
         >
           プロダクトを開く →
         </a>
+      ) : (
+        <div className="w-full py-5 rounded-2xl bg-zinc-900 text-zinc-500 text-center text-sm border border-zinc-800">
+          デプロイ準備中…
+        </div>
       )}
       <div className="flex gap-3">
         <button
@@ -343,7 +392,7 @@ function LimitView({ onProjects }: { onProjects: () => void }) {
       <div className="space-y-3">
         <p className="text-4xl">🎉</p>
         <h2 className="text-2xl font-bold text-white">2個のプロダクトを作りました</h2>
-        <p className="text-zinc-400 text-sm">
+        <p className="text-zinc-400 text-sm leading-relaxed">
           無料プランの上限に達しました。<br />有料プランで無制限に作れます。
         </p>
       </div>
@@ -355,6 +404,20 @@ function LimitView({ onProjects }: { onProjects: () => void }) {
         className="w-full py-4 rounded-2xl border border-zinc-700 text-zinc-300 text-sm active:scale-95 transition-transform"
       >
         マイプロジェクトを見る
+      </button>
+    </div>
+  )
+}
+
+function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center">
+      <p className="text-zinc-400 text-sm">{message || 'エラーが発生しました。'}</p>
+      <button
+        onClick={onRetry}
+        className="px-8 py-4 rounded-2xl bg-white text-zinc-900 text-base font-medium active:scale-95 transition-transform"
+      >
+        もう一度試す
       </button>
     </div>
   )
