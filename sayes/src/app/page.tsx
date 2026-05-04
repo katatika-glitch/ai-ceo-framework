@@ -7,7 +7,7 @@ export default async function RootPage() {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
-    redirect('/login')
+    redirect('/lp')
   }
 
   const { data: profile } = await supabaseAdmin
